@@ -16,14 +16,14 @@
                 id="url"
                 v-model="url"
                 placeholder="Paste your music link here..."
-                class="w-full px-4 py-3 rounded-xl bg-[#2A2A2A] text-[#ECEDEE] placeholder-[#9BA1A6] focus:outline-none focus:ring-2 focus:ring-[#1DB954]"
+                class="w-full px-4 py-3 rounded-xl bg-[#2A2A2A] text-[#ECEDEE] placeholder-[#9BA1A6] focus:outline-none focus:ring-2 focus:ring-[#03050a]"
                 required
               />
             </div>
 
             <button
               type="submit"
-              class="w-full bg-[#1DB954] text-white py-3 px-6 rounded-xl hover:bg-opacity-90 transition-colors duration-200"
+              class="w-full bg-[#03050a] text-white py-3 px-6 rounded-xl hover:bg-opacity-90 transition-colors duration-200"
               :disabled="loading"
             >
               <span v-if="loading" class="flex items-center justify-center">

@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-[#121212]">
     <div class="container mx-auto px-4 py-8">
       <div v-if="loading" class="flex justify-center items-center min-h-[60vh]">
-        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1DB954]"></div>
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#03050a]"></div>
       </div>
       
       <div v-else-if="error" class="text-center text-[#CF6679] py-8">
@@ -178,6 +178,6 @@ onMounted(async () => {
 }
 
 .audius-button {
-  @apply bg-[#1DB954] hover:bg-opacity-90;
+  @apply bg-[#8222ce] hover:bg-opacity-90;
 }
 </style> 
