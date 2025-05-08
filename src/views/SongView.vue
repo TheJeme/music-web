@@ -91,13 +91,43 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const songData = ref(null)
 const loading = ref(true)
 const error = ref(null)
+
+const updateMetaTags = () => {
+  if (songData.value) {
+    // Update meta tags
+    document.title = `${songData.value.title} - ${songData.value.artistName}`
+    
+    // Open Graph tags
+    const metaTags = {
+      'og:title': songData.value.title,
+      'og:description': songData.value.artistName,
+      'og:image': songData.value.thumbnailUrl,
+    }
+
+    // Update or create meta tags
+    Object.entries(metaTags).forEach(([property, content]) => {
+      let meta = document.querySelector(`meta[property="${property}"]`)
+      if (!meta) {
+        meta = document.createElement('meta')
+        meta.setAttribute('property', property)
+        document.head.appendChild(meta)
+      }
+      meta.setAttribute('content', content)
+    })
+  }
+}
+
+// Watch for changes in songData and update meta tags
+watch(songData, () => {
+  updateMetaTags()
+})
 
 const getYouTubeVideoId = (url) => {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
