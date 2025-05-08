@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-900 text-white;
+  }
+}
+
+@layer components {
+  .platform-button {
+    @apply w-full py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-medium transition-all duration-200;
+  }
+  
+  .spotify-button {
+    @apply bg-spotify hover:bg-spotify/90 text-white;
+  }
+  
+  .apple-music-button {
+    @apply bg-appleMusic hover:bg-appleMusic/90 text-white;
+  }
+  
+  .youtube-button {
+    @apply bg-youtube hover:bg-youtube/90 text-white;
+  }
+  
+  .tidal-button {
+    @apply bg-tidal hover:bg-tidal/90 text-white;
+  }
+} 
