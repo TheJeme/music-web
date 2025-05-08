@@ -16,6 +16,14 @@ export default defineConfig({
     },
   },
   css: {
-    postcss: fileURLToPath(new URL('./postcss.config.js', import.meta.url))
+    postcss: './postcss.config.js'
+  },
+  build: {
+    cssCodeSplit: true,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
   }
 })
