@@ -49,6 +49,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { db } from '../firebase'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 
 const router = useRouter()
 const url = ref('')
@@ -58,22 +60,55 @@ const error = ref(null)
 const handleSubmit = async () => {
   try {
     loading.value = true
-    
-    // First, get the song.link data
+    error.value = null
+
+    // Get the song.link data for the pasted URL
     const response = await fetch(`https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url.value)}`)
     const data = await response.json()
-    
-    if (!data.pageUrl) {
+
+    if (!data.pageUrl || !data.entitiesByUniqueId) {
       throw new Error('Invalid music URL')
     }
-    
-    // Extract the ID from the song.link pageUrl
+
+    // Extract the Firestore document ID from song.link pageUrl
     const match = data.pageUrl.match(/song\.link\/s\/([^/?]+)/)
     if (!match) {
       throw new Error('Could not extract song ID')
     }
-    
     const songId = match[1]
+
+    // Extract core entity info (title, artist, thumbnail)
+    const entity = Object.values(data.entitiesByUniqueId)[0]
+    if (!entity) {
+      throw new Error('Song details missing')
+    }
+
+    // Keep only the platforms we use in the UI and only their URLs
+    const inputLinks = data.linksByPlatform || {}
+    const linksByPlatform = {}
+    ;['youtube', 'spotify', 'appleMusic', 'tidal'].forEach((k) => {
+      if (inputLinks[k]?.url) linksByPlatform[k] = { url: inputLinks[k].url }
+    })
+
+    // Upsert into Firestore so SongView can read it later by ID
+    const songRef = doc(db, 'music', songId)
+    const existing = await getDoc(songRef)
+    await setDoc(
+      songRef,
+      {
+        title: entity.title,
+        artistName: entity.artistName,
+        thumbnailUrl: entity.thumbnailUrl,
+        linksByPlatform,
+        pageUrl: data.pageUrl,
+        sourceUrl: url.value,
+        updatedAt: serverTimestamp(),
+        ...(existing.exists() ? {} : { createdAt: serverTimestamp() }),
+      },
+      { merge: true }
+    )
+
+    // Navigate to the saved document ID
     router.push(`/${songId}`)
   } catch (err) {
     console.error('Error:', err)
@@ -82,4 +117,4 @@ const handleSubmit = async () => {
     loading.value = false
   }
 }
-</script> 
+</script>

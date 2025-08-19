@@ -77,8 +77,10 @@
                 target="_blank"
                 class="platform-button tidal-button"
               >
-                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm0 19.104c-3.924 0-7.104-3.18-7.104-7.104S8.076 4.896 12 4.896s7.104 3.18 7.104 7.104-3.18 7.104-7.104 7.104zm0-13.332c-3.432 0-6.228 2.796-6.228 6.228S8.568 18.228 12 18.228s6.228-2.796 6.228-6.228S15.432 5.772 12 5.772z"/>
+                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <g transform="scale(1,-1) translate(0,-20)">
+                    <path d="M12 2.25 14.25 4.5 12 6.75 9.75 4.5 12 2.25ZM5.25 9 7.5 11.25 5.25 13.5 3 11.25 5.25 9ZM12 9l2.25 2.25L12 13.5 9.75 11.25 12 9ZM18.75 9 21 11.25 18.75 13.5 16.5 11.25 18.75 9Z"/>
+                  </g>
                 </svg>
                 Tidal
               </a>
@@ -93,6 +95,9 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+// Firestore
+import { db } from '../firebase'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 
 const route = useRoute()
 const songData = ref(null)
@@ -101,17 +106,12 @@ const error = ref(null)
 
 const updateMetaTags = () => {
   if (songData.value) {
-    // Update meta tags
     document.title = `${songData.value.title} - ${songData.value.artistName}`
-    
-    // Open Graph tags
     const metaTags = {
       'og:title': songData.value.title,
       'og:description': songData.value.artistName,
       'og:image': songData.value.thumbnailUrl,
     }
-
-    // Update or create meta tags
     Object.entries(metaTags).forEach(([property, content]) => {
       let meta = document.querySelector(`meta[property="${property}"]`)
       if (!meta) {
@@ -124,7 +124,6 @@ const updateMetaTags = () => {
   }
 }
 
-// Watch for changes in songData and update meta tags
 watch(songData, () => {
   updateMetaTags()
 })
@@ -132,29 +131,48 @@ watch(songData, () => {
 const getYouTubeVideoId = (url) => {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
   const match = url.match(regExp)
-  return (match && match[2].length === 11) ? match[2] : null
+  return match && match[2].length === 11 ? match[2] : null
+}
+
+async function fetchAndCacheFromSongLink(songId) {
+  const response = await fetch(`https://api.song.link/v1-alpha.1/links?url=https://song.link/s/${songId}`)
+  const data = await response.json()
+  if (!data.entitiesByUniqueId) {
+    throw new Error('Song not found')
+  }
+  const entity = Object.values(data.entitiesByUniqueId)[0]
+  const inputLinks = data.linksByPlatform || {}
+  const linksByPlatform = {}
+  ;['youtube', 'spotify', 'appleMusic', 'tidal'].forEach((k) => {
+    if (inputLinks[k]?.url) linksByPlatform[k] = { url: inputLinks[k].url }
+  })
+  const payload = {
+    title: entity.title,
+    artistName: entity.artistName,
+    thumbnailUrl: entity.thumbnailUrl,
+    linksByPlatform,
+    pageUrl: data.pageUrl,
+    updatedAt: serverTimestamp(),
+  }
+  const songRef = doc(db, 'music', songId)
+  await setDoc(songRef, { ...payload, createdAt: serverTimestamp() }, { merge: true })
+  return payload
 }
 
 onMounted(async () => {
   try {
     const songId = route.params.id
-    const response = await fetch(`https://api.song.link/v1-alpha.1/links?url=https://song.link/s/${songId}`)
-    const data = await response.json()
-    
-    if (!data.entitiesByUniqueId) {
-      throw new Error('Song not found')
-    }
-    
-    // Get the first entity (usually the main song)
-    const entity = Object.values(data.entitiesByUniqueId)[0]
-    songData.value = {
-      title: entity.title,
-      artistName: entity.artistName,
-      thumbnailUrl: entity.thumbnailUrl,
-      linksByPlatform: data.linksByPlatform
+    const songRef = doc(db, 'music', songId)
+    const snap = await getDoc(songRef)
+
+    if (snap.exists()) {
+      songData.value = snap.data()
+    } else {
+      // Fallback: fetch from song.link and cache in Firestore
+      songData.value = await fetchAndCacheFromSongLink(songId)
     }
   } catch (err) {
-    console.error('Error fetching song:', err)
+    console.error('Error loading song:', err)
     error.value = 'Failed to load song information'
   } finally {
     loading.value = false
@@ -210,4 +228,4 @@ onMounted(async () => {
 .audius-button {
   @apply bg-[#8222ce] hover:bg-opacity-90;
 }
-</style> 
+</style>
