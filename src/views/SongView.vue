@@ -95,7 +95,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-// Firestore
 import { db } from '../firebase'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 
@@ -105,23 +104,46 @@ const loading = ref(true)
 const error = ref(null)
 
 const updateMetaTags = () => {
-  if (songData.value) {
-    document.title = `${songData.value.title} - ${songData.value.artistName}`
-    const metaTags = {
-      'og:title': songData.value.title,
-      'og:description': songData.value.artistName,
-      'og:image': songData.value.thumbnailUrl,
-    }
-    Object.entries(metaTags).forEach(([property, content]) => {
-      let meta = document.querySelector(`meta[property="${property}"]`)
+  if (!songData.value) return
+
+  const title = `${songData.value.title} - ${songData.value.artistName}`
+  const description = songData.value.artistName
+  const image = songData.value.thumbnailUrl
+  const url = typeof window !== 'undefined' ? window.location.href : ''
+
+  document.title = title
+
+  const propertyTags = {
+    'og:title': title,
+    'og:description': description,
+    'og:image': image,
+    'og:url': url,
+    'og:type': 'music.song',
+  }
+
+  const nameTags = {
+    'twitter:card': 'summary_large_image',
+    'twitter:title': title,
+    'twitter:description': description,
+    'twitter:image': image,
+    // Also update standard description
+    description,
+  }
+
+  const upsertMeta = (attr, tags) => {
+    Object.entries(tags).forEach(([key, content]) => {
+      let meta = document.querySelector(`meta[${attr}="${key}"]`)
       if (!meta) {
         meta = document.createElement('meta')
-        meta.setAttribute('property', property)
+        meta.setAttribute(attr, key)
         document.head.appendChild(meta)
       }
-      meta.setAttribute('content', content)
+      meta.setAttribute('content', content || '')
     })
   }
+
+  upsertMeta('property', propertyTags)
+  upsertMeta('name', nameTags)
 }
 
 watch(songData, () => {
